@@ -7,20 +7,21 @@
 #include <winsock2.h>
 
 #define BUF_SIZE 1024
+#define RLT_SIZE 4
+#define OPSZ 4
 
 void ErrorHandling(char *message);
 
 int main(int argc, char *argv[])
 {
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 0), &wsaData);
-
     SOCKET hSocket;
-    char message[BUF_SIZE];
-    int str_len;
 
-    struct sockaddr_in serv_adr;
+    char opmsg[BUF_SIZE];
+    int opndCnt, i;
+    char result[BUF_SIZE];
 
+    SOCKADDR_IN servAdr;
     if (argc != 3)
     {
         printf("Usage : %s <IP> <port> \n", argv[0]);
@@ -38,12 +39,12 @@ int main(int argc, char *argv[])
         ErrorHandling("socket() error");
     }
 
-    memset(&serv_adr, 0, sizeof(serv_adr));
-    serv_adr.sin_family = AF_INET;
-    serv_adr.sin_addr.s_addr = inet_addr(argv[1]);
-    serv_adr.sin_port = htons(atoi(argv[2]));
+    memset(&servAdr, 0, sizeof(servAdr));
+    servAdr.sin_family = AF_INET;
+    servAdr.sin_addr.s_addr = inet_addr(argv[1]);
+    servAdr.sin_port = htons(atoi(argv[2]));
 
-    if (connect(hSocket, (struct sockaddr *)&serv_adr, sizeof(serv_adr)) == -1)
+    if (connect(hSocket, (struct sockaddr *)&servAdr, sizeof(servAdr)) == SOCKET_ERROR)
     {
         ErrorHandling("socket() error");
     }
@@ -52,21 +53,24 @@ int main(int argc, char *argv[])
         puts("Connected \n");
     }
 
-    while (1)
+    fputs("Operand count: ", stdout);
+    scanf("%d", &opndCnt);
+    opmsg[0] = (char)opndCnt;
+
+    for (i = 0; i < opndCnt; i++)
     {
-        fputs("Input message(Q to quit): ", stdout);
-        fgets(message, BUF_SIZE, stdin);
-
-        if (!strcmp(message, "q\n") || !strcmp(message, "Q\n"))
-        {
-            break;
-        }
-
-        send(hSocket, message, strlen(message), 0);
-        str_len = recv(hSocket, message, strlen(message), 0);
-        message[str_len] = 0;
-        printf("Message from server: %s", message);
+        printf("Operand %d: ", i + 1);
+        scanf("%d", (int *)&opmsg[i * +1]);
     }
+
+    fgetc(stdin);
+    fputs("Operator: ", stdout);
+    scanf("%c", &opmsg[opndCnt * OPSZ + 1]);
+    send(hSocket, opmsg, opndCnt * OPSZ + 2, 0);
+    recv(hSocket, result, BUF_SIZE, 0);
+
+    printf("Operation result: %s \n", result);
+    closesocket(hSocket);
 
     close(hSocket);
     WSACleanup();
